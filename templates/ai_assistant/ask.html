@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Ask AI — DocuMind AI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="h3 mb-0">Ask AI</h1>
+    <span class="badge rounded-pill text-bg-light fs-6" id="usageBadge">
+        {{ usage.remaining }}/{{ usage.limit }} questions left today
+    </span>
+</div>
+
+{% if not has_documents %}
+<div class="empty-state text-center py-5">
+    <i class="bi bi-robot empty-icon"></i>
+    <h5 class="mt-3">No documents ready yet</h5>
+    <p class="text-muted">
+        Upload and process a PDF or TXT file before asking questions.
+    </p>
+    <a href="{% url 'documents:upload' %}" class="btn btn-primary">
+        <i class="bi bi-upload"></i> Upload Document
+    </a>
+</div>
+{% else %}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body">
+                <form id="askForm">
+                    <div class="mb-3">
+                        <label for="documentSelect" class="form-label">Document</label>
+                        <select class="form-select" id="documentSelect" required>
+                            <option value="" disabled>Select a document…</option>
+                            {% for doc in documents %}
+                            <option value="{{ doc.pk }}">{{ doc.original_filename }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="questionInput" class="form-label">Your question</label>
+                        <textarea class="form-control" id="questionInput" rows="4"
+                                  maxlength="1000"
+                                  placeholder="e.g. How many paid leave days do employees get?"
+                                  required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" id="askBtn">
+                        <span class="spinner-border spinner-border-sm d-none"
+                              id="askSpinner" role="status"></span>
+                        <span id="askBtnText"><i class="bi bi-send"></i> Ask</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div id="answerPlaceholder" class="empty-state text-center py-5">
+            <i class="bi bi-chat-left-text empty-icon"></i>
+            <p class="text-muted mt-2 mb-0">Your answer will appear here.</p>
+        </div>
+
+        <div class="card d-none" id="answerCard">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Answer</strong>
+                <span id="answerStatus"></span>
+            </div>
+            <div class="card-body">
+                <div id="mockNotice" class="alert alert-info py-2 small d-none">
+                    <i class="bi bi-info-circle"></i>
+                    Mock provider: this is an extractive summary of the most
+                    relevant passages, not AI-generated reasoning.
+                </div>
+                <div id="answerText" class="answer-text"></div>
+                <div id="sourcesSection" class="mt-4 d-none">
+                    <h6 class="text-muted">Sources</h6>
+                    <div id="sourcesList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/ask.js' %}"></script>
+{% endblock %}

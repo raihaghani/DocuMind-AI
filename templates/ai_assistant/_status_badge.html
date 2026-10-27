@@ -1,0 +1,7 @@
+{% if status == "success" %}
+    <span class="badge text-bg-success">Successful</span>
+{% elif status == "unsupported" %}
+    <span class="badge text-bg-secondary">Unsupported</span>
+{% else %}
+    <span class="badge text-bg-danger">Failed</span>
+{% endif %}

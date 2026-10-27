@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ document.original_filename }} — DocuMind AI{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'documents:list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h1 class="h3 mb-0 text-truncate">{{ document.original_filename }}</h1>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><strong>Details</strong></div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        {% include "documents/_status_badge.html" with status=document.status %}
+                    </dd>
+                    <dt class="col-sm-4">Type</dt>
+                    <dd class="col-sm-8">{{ document.get_file_type_display }}</dd>
+                    <dt class="col-sm-4">Size</dt>
+                    <dd class="col-sm-8">{{ document.size_display }}</dd>
+                    {% if document.file_type == "pdf" %}
+                    <dt class="col-sm-4">Pages</dt>
+                    <dd class="col-sm-8">{{ document.page_count }}</dd>
+                    {% endif %}
+                    <dt class="col-sm-4">Chunks</dt>
+                    <dd class="col-sm-8">{{ document.chunk_count }}</dd>
+                    <dt class="col-sm-4">Characters</dt>
+                    <dd class="col-sm-8">{{ document.char_count }}</dd>
+                    <dt class="col-sm-4">Uploaded</dt>
+                    <dd class="col-sm-8">{{ document.uploaded_at|date:"F j, Y H:i" }}</dd>
+                </dl>
+                {% if document.status == "failed" %}
+                <div class="alert alert-danger mt-3 mb-0">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    {{ document.error_message }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body d-grid gap-2">
+                {% if document.is_ready %}
+                <a href="{% url 'ai_assistant:ask' %}?document={{ document.pk }}"
+                   class="btn btn-primary">
+                    <i class="bi bi-robot"></i> Ask about this document
+                </a>
+                {% endif %}
+                <a href="{% url 'documents:download' document.pk %}"
+                   class="btn btn-outline-secondary">
+                    <i class="bi bi-download"></i> Download original
+                </a>
+                <button type="button" class="btn btn-outline-danger"
+                        data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="bi bi-trash"></i> Delete document
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete document?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                This permanently deletes <strong>{{ document.original_filename }}</strong>
+                and its searchable content. Your question history is kept.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <form method="post" action="{% url 'documents:delete' document.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+{% if status == "ready" %}
+    <span class="badge text-bg-success">Ready</span>
+{% elif status == "processing" %}
+    <span class="badge text-bg-warning">Processing</span>
+{% else %}
+    <span class="badge text-bg-danger">Failed</span>
+{% endif %}

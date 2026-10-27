@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — DocuMind AI{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">Welcome back, {{ user.username }}</h1>
+        <p class="text-muted mb-0">Here's what's happening in your workspace.</p>
+    </div>
+    <div class="d-flex gap-2 mt-2 mt-md-0">
+        <a href="{% url 'documents:upload' %}" class="btn btn-outline-primary">
+            <i class="bi bi-upload"></i> Upload Document
+        </a>
+        <a href="{% url 'ai_assistant:ask' %}" class="btn btn-primary">
+            <i class="bi bi-robot"></i> Ask AI
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Documents</div>
+                <div class="stat-value">{{ total_documents }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Total Questions</div>
+                <div class="stat-value">{{ total_questions }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Used Today</div>
+                <div class="stat-value">{{ questions_used_today }}/{{ daily_limit }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Remaining Today</div>
+                <div class="stat-value">{{ remaining_today }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+            <strong>Daily AI Usage</strong>
+            <span class="text-muted">{{ questions_used_today }}/{{ daily_limit }} used</span>
+        </div>
+        <div class="progress" role="progressbar"
+             aria-valuenow="{{ usage_percent }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar" style="width: {{ usage_percent }}%"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Recent Documents</strong>
+                <a href="{% url 'documents:list' %}" class="small">View all</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for doc in recent_documents %}
+                <a href="{% url 'documents:detail' doc.pk %}"
+                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    <span class="text-truncate me-2">
+                        <i class="bi bi-file-earmark-text"></i> {{ doc.original_filename }}
+                    </span>
+                    {% include "documents/_status_badge.html" with status=doc.status %}
+                </a>
+                {% empty %}
+                <div class="list-group-item text-muted">
+                    No documents yet.
+                    <a href="{% url 'documents:upload' %}">Upload one</a>.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Recent Questions</strong>
+                <a href="{% url 'ai_assistant:history' %}" class="small">View all</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for req in recent_requests %}
+                <a href="{% url 'ai_assistant:history_detail' req.pk %}"
+                   class="list-group-item list-group-item-action">
+                    <div class="d-flex justify-content-between">
+                        <span class="text-truncate me-2">{{ req.question }}</span>
+                        {% include "ai_assistant/_status_badge.html" with status=req.status %}
+                    </div>
+                    <small class="text-muted">
+                        {{ req.document_name }} · {{ req.created_at|date:"M j, Y H:i" }}
+                    </small>
+                </a>
+                {% empty %}
+                <div class="list-group-item text-muted">
+                    No questions yet.
+                    <a href="{% url 'ai_assistant:ask' %}">Ask one</a>.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

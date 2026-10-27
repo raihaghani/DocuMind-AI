@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Upload Document — DocuMind AI{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'documents:list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h1 class="h3 mb-0">Upload Document</h1>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.file.id_for_label }}" class="form-label">
+                            {{ form.file.label }}
+                        </label>
+                        {{ form.file }}
+                        <div class="form-text">{{ form.file.help_text }}</div>
+                        {% for error in form.file.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="uploadBtn">
+                        <span class="spinner-border spinner-border-sm d-none"
+                              id="uploadSpinner" role="status"></span>
+                        <i class="bi bi-upload"></i> Upload &amp; Process
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card bg-light border-0">
+            <div class="card-body">
+                <h6><i class="bi bi-info-circle"></i> What happens on upload</h6>
+                <ol class="small text-muted mb-0 ps-3">
+                    <li>The file is validated and stored privately.</li>
+                    <li>Text is extracted (page numbers kept for PDFs).</li>
+                    <li>Text is split into searchable chunks.</li>
+                    <li>The document becomes ready for questions.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('uploadForm').addEventListener('submit', function () {
+        document.getElementById('uploadBtn').setAttribute('disabled', 'disabled');
+        document.getElementById('uploadSpinner').classList.remove('d-none');
+    });
+</script>
+{% endblock %}

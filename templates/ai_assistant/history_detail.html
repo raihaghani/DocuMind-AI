@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Question detail — DocuMind AI{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'ai_assistant:history' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h1 class="h3 mb-0">Question detail</h1>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <div class="text-muted small">
+                    {{ ai_request.document_name }}
+                    · {{ ai_request.created_at|date:"F j, Y H:i" }}
+                    · <span class="text-capitalize">{{ ai_request.provider_mode }}</span> provider
+                </div>
+            </div>
+            {% include "ai_assistant/_status_badge.html" with status=ai_request.status %}
+        </div>
+
+        <h6 class="text-muted">Question</h6>
+        <p class="mb-4">{{ ai_request.question }}</p>
+
+        <h6 class="text-muted">Answer</h6>
+        {% if ai_request.status == "failed" %}
+        <div class="alert alert-danger">
+            {{ ai_request.error_detail|default:"The request failed." }}
+        </div>
+        {% else %}
+        <div class="answer-text mb-3">{{ ai_request.answer|linebreaksbr }}</div>
+        {% endif %}
+
+        {% if ai_request.sources %}
+        <h6 class="text-muted mt-4">Sources</h6>
+        {% for source in ai_request.sources %}
+        <div class="source-item">
+            <div class="d-flex justify-content-between">
+                <strong>
+                    {{ ai_request.document_name }}
+                    {% if source.label %}— {{ source.label }}{% endif %}
+                </strong>
+                {% if source.score %}
+                <small class="text-muted">relevance {{ source.score }}</small>
+                {% endif %}
+            </div>
+            {% if source.snippet %}
+            <p class="text-muted small mb-0 mt-1">{{ source.snippet }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

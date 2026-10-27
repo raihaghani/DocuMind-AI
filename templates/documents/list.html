@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}My Documents — DocuMind AI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">My Documents</h1>
+    <a href="{% url 'documents:upload' %}" class="btn btn-primary">
+        <i class="bi bi-upload"></i> Upload Document
+    </a>
+</div>
+
+{% if documents %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Uploaded</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td class="text-truncate" style="max-width: 260px;">
+                        <a href="{% url 'documents:detail' doc.pk %}">
+                            {{ doc.original_filename }}
+                        </a>
+                    </td>
+                    <td><span class="badge text-bg-light">{{ doc.get_file_type_display }}</span></td>
+                    <td>{{ doc.size_display }}</td>
+                    <td>{% include "documents/_status_badge.html" with status=doc.status %}</td>
+                    <td><small>{{ doc.uploaded_at|date:"M j, Y H:i" }}</small></td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            {% if doc.is_ready %}
+                            <a href="{% url 'ai_assistant:ask' %}?document={{ doc.pk }}"
+                               class="btn btn-outline-primary" title="Ask AI">
+                                <i class="bi bi-robot"></i>
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'documents:download' doc.pk %}"
+                               class="btn btn-outline-secondary" title="Download">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-danger"
+                                    title="Delete" data-bs-toggle="modal"
+                                    data-bs-target="#deleteModal{{ doc.pk }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+
+                        <div class="modal fade" id="deleteModal{{ doc.pk }}"
+                             tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content text-start">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Delete document?</h5>
+                                        <button type="button" class="btn-close"
+                                                data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        This will permanently delete
+                                        <strong>{{ doc.original_filename }}</strong>
+                                        and its searchable content. Your question
+                                        history is kept.
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary"
+                                                data-bs-dismiss="modal">Cancel</button>
+                                        <form method="post"
+                                              action="{% url 'documents:delete' doc.pk %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-danger">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state text-center py-5">
+    <i class="bi bi-folder2-open empty-icon"></i>
+    <h5 class="mt-3">No documents yet</h5>
+    <p class="text-muted">Upload a PDF or TXT file to get started.</p>
+    <a href="{% url 'documents:upload' %}" class="btn btn-primary">
+        <i class="bi bi-upload"></i> Upload Document
+    </a>
+</div>
+{% endif %}
+{% endblock %}
