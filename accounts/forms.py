@@ -33,16 +33,26 @@ class RegistrationForm(UserCreationForm):
     def clean_username(self):
         username = self.cleaned_data["username"]
         if User.objects.filter(username__iexact=username).exists():
-            raise forms.ValidationError("That username is already taken.")
+            raise forms.ValidationError(
+                "That username is already taken.", code="duplicate_account"
+            )
         return username
 
     def clean_email(self):
         email = self.cleaned_data["email"]
         if email and User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError(
-                "An account with that email already exists."
+                "An account with that email already exists.", code="duplicate_account"
             )
         return email
+
+    @property
+    def has_duplicate_account(self):
+        return any(
+            error.code == "duplicate_account"
+            for errors in self.errors.as_data().values()
+            for error in errors
+        )
 
     def save(self, commit=True):
         user = super().save(commit=False)

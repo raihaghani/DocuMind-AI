@@ -1,0 +1,145 @@
+---
+title: DocuMind AI - verified database schema
+config:
+  theme: neutral
+  er:
+    diagramPadding: 30
+    entityPadding: 14
+---
+erDiagram
+    direction LR
+    %% PK = Primary Key; FK = Foreign Key; UK = Unique Key.
+    %% Types are actual SQLite declarations; underscores replace spaces.
+    %% UK composite comments identify joint uniqueness, not individual uniqueness.
+    %% Delete labels describe Django ORM behavior, not SQL ON DELETE clauses.
+    auth_user {
+        INTEGER id PK "NOT NULL"
+        varchar(128) password "NOT NULL"
+        datetime last_login "NULL"
+        bool is_superuser "NOT NULL"
+        varchar(150) username UK "NOT NULL"
+        varchar(150) first_name "NOT NULL"
+        varchar(150) last_name "NOT NULL"
+        varchar(254) email "NOT NULL"
+        bool is_staff "NOT NULL"
+        bool is_active "NOT NULL"
+        datetime date_joined "NOT NULL"
+    }
+    workspace_workspace {
+        INTEGER id PK "NOT NULL"
+        INTEGER owner_id FK,UK "NOT NULL"
+        varchar(120) name "NOT NULL"
+        datetime created_at "NOT NULL"
+    }
+    documents_document {
+        INTEGER id PK "NOT NULL"
+        INTEGER owner_id FK "NOT NULL"
+        bigint workspace_id FK "NOT NULL"
+        varchar(255) original_filename "NOT NULL"
+        varchar(255) stored_filename "NOT NULL"
+        varchar(512) storage_path "NOT NULL"
+        varchar(8) file_type "NOT NULL"
+        integer_unsigned file_size "NOT NULL"
+        datetime uploaded_at "NOT NULL"
+        varchar(16) status "NOT NULL"
+        integer_unsigned char_count "NOT NULL"
+        integer_unsigned page_count "NOT NULL"
+        integer_unsigned chunk_count "NOT NULL"
+        TEXT error_message "NOT NULL"
+    }
+    documents_documentchunk {
+        INTEGER id PK "NOT NULL"
+        bigint document_id FK,UK "NOT NULL; composite UK1"
+        INTEGER owner_id FK "NOT NULL"
+        integer_unsigned seq UK "NOT NULL; composite UK1"
+        TEXT text "NOT NULL"
+        integer_unsigned page_number "NULL"
+        varchar(120) reference "NOT NULL"
+    }
+    ai_assistant_airequest {
+        INTEGER id PK "NOT NULL"
+        INTEGER user_id FK "NOT NULL"
+        bigint document_id FK "NULL"
+        varchar(255) document_name "NOT NULL"
+        TEXT question "NOT NULL"
+        TEXT answer "NOT NULL"
+        varchar(16) status "NOT NULL"
+        varchar(16) provider_mode "NOT NULL"
+        TEXT sources "NOT NULL; JSON validated"
+        varchar(255) error_detail "NOT NULL"
+        datetime created_at "NOT NULL"
+    }
+    ai_assistant_usagerecord {
+        INTEGER id PK "NOT NULL"
+        INTEGER user_id FK,UK "NOT NULL; composite UK1"
+        date date UK "NOT NULL; composite UK1"
+        integer_unsigned count "NOT NULL"
+    }
+    auth_group {
+        INTEGER id PK "NOT NULL"
+        varchar(150) name UK "NOT NULL"
+    }
+    auth_group_permissions {
+        INTEGER id PK "NOT NULL"
+        INTEGER group_id FK,UK "NOT NULL; composite UK1"
+        INTEGER permission_id FK,UK "NOT NULL; composite UK1"
+    }
+    auth_permission {
+        INTEGER id PK "NOT NULL"
+        varchar(255) name "NOT NULL"
+        INTEGER content_type_id FK,UK "NOT NULL; composite UK1"
+        varchar(100) codename UK "NOT NULL; composite UK1"
+    }
+    auth_user_groups {
+        INTEGER id PK "NOT NULL"
+        INTEGER user_id FK,UK "NOT NULL; composite UK1"
+        INTEGER group_id FK,UK "NOT NULL; composite UK1"
+    }
+    auth_user_user_permissions {
+        INTEGER id PK "NOT NULL"
+        INTEGER user_id FK,UK "NOT NULL; composite UK1"
+        INTEGER permission_id FK,UK "NOT NULL; composite UK1"
+    }
+    django_admin_log {
+        INTEGER id PK "NOT NULL"
+        datetime action_time "NOT NULL"
+        INTEGER user_id FK "NOT NULL"
+        INTEGER content_type_id FK "NULL"
+        TEXT object_id "NULL"
+        varchar(200) object_repr "NOT NULL"
+        smallint_unsigned action_flag "NOT NULL"
+        TEXT change_message "NOT NULL"
+    }
+    django_content_type {
+        INTEGER id PK "NOT NULL"
+        varchar(100) app_label UK "NOT NULL; composite UK1"
+        varchar(100) model UK "NOT NULL; composite UK1"
+    }
+    django_migrations {
+        INTEGER id PK "NOT NULL"
+        varchar(255) app "NOT NULL"
+        varchar(255) name "NOT NULL"
+        datetime applied "NOT NULL"
+    }
+    django_session {
+        varchar(40) session_key PK "NOT NULL"
+        TEXT session_data "NOT NULL"
+        datetime expire_date "NOT NULL"
+    }
+    auth_user ||..o| workspace_workspace : "owner_id / CASCADE"
+    auth_user ||..o{ documents_document : "owner_id / CASCADE"
+    workspace_workspace ||..o{ documents_document : "workspace_id / CASCADE"
+    documents_document ||..o{ documents_documentchunk : "document_id / CASCADE"
+    auth_user ||..o{ documents_documentchunk : "owner_id / CASCADE"
+    auth_user ||..o{ ai_assistant_airequest : "user_id / CASCADE"
+    documents_document |o..o{ ai_assistant_airequest : "document_id / SET_NULL"
+    auth_user ||..o{ ai_assistant_usagerecord : "user_id / CASCADE"
+    auth_group ||..o{ auth_group_permissions : "group_id / CASCADE"
+    auth_permission ||..o{ auth_group_permissions : "permission_id / CASCADE"
+    django_content_type ||..o{ auth_permission : "content_type_id / CASCADE"
+    auth_user ||..o{ auth_user_groups : "user_id / CASCADE"
+    auth_group ||..o{ auth_user_groups : "group_id / CASCADE"
+    auth_user ||..o{ auth_user_user_permissions : "user_id / CASCADE"
+    auth_permission ||..o{ auth_user_user_permissions : "permission_id / CASCADE"
+    auth_user ||..o{ django_admin_log : "user_id / CASCADE"
+    django_content_type |o..o{ django_admin_log : "content_type_id / SET_NULL"

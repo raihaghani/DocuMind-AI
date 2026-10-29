@@ -22,7 +22,9 @@ def register(request):
             user = form.save()
             login(request, user)
             messages.success(
-                request, "Welcome to DocuMind AI! Your workspace is ready."
+                request,
+                "Your account was created successfully. You are now logged in. "
+                "Your workspace is ready."
             )
             return redirect("workspace:dashboard")
     else:

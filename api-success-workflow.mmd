@@ -1,0 +1,82 @@
+---
+title: DocuMind AI - successful question workflow (configured mock provider)
+---
+sequenceDiagram
+    actor U as User
+    participant B as Browser / ask.js
+    participant V as Django / api_ask
+    participant Q as Usage service
+    participant D as SQLite / ORM storage
+    participant R as Retrieval service
+    participant P as MockProvider
+
+    Note over U,P: Preconditions: signed-in session, valid CSRF token, owned READY document, remaining quota, relevant chunks
+    U->>B: Select document, enter question, submit
+    activate B
+    B->>B: Trim input, capture selected filename, show loading
+    B->>V: POST /api/ask/ - JSON {document_id, question}<br/>Session cookie + X-CSRFToken
+    activate V
+    Note over B,V: Django middleware handles session, CSRF and lazy request.user, require_POST allows POST
+    V->>D: Resolve session-backed user on authentication check
+    activate D
+    D-->>V: Authenticated user
+    deactivate D
+    V->>V: _require_auth_json passes, parse body<br/>Trim question, validate presence and length
+    V->>D: Document.objects.get(pk=document_id, owner=request.user)
+    activate D
+    D-->>V: Owned Document
+    deactivate D
+    V->>V: Confirm document.status == READY
+
+    rect rgb(237, 247, 251)
+    V->>Q: try_consume(request.user)
+    activate Q
+    Q->>D: atomic(): get_or_create(user, date=localdate())<br/>UsageRecord, create count=0 if absent
+    activate D
+    D-->>Q: Today's usage record
+    deactivate D
+    Q->>Q: Check count below DAILY_QUESTION_LIMIT (10)
+    Q->>D: UPDATE count = F(count) + 1, COMMIT
+    activate D
+    D-->>Q: Usage increment persisted
+    deactivate D
+    Q-->>V: True - accepted and consumed
+    deactivate Q
+    Note over Q,D: Quota is recorded BEFORE retrieval/provider work.<br/>select_for_update is requested by code, SQLite has no row-level FOR UPDATE.
+    end
+
+    V->>R: retrieve(document.chunks.all(), question)
+    activate R
+    R->>D: list(chunks) evaluates lazy queryset<br/>SELECT chunks for authorized document
+    activate D
+    D-->>R: DocumentChunk rows (document_id, seq order)
+    deactivate D
+    R->>R: Fit TF-IDF on chunk text, transform question<br/>Cosine similarity, descending rank<br/>Top 3 candidates, keep score >= 0.05
+    R-->>V: RetrievedChunk list with text, labels and scores
+    deactivate R
+    V->>V: get_provider() selects MockProvider<br/>Effective AI_PROVIDER = mock
+    V->>P: generate(question, retrieved, document.original_filename)
+    activate P
+    P->>P: _build_sources(retrieved)<br/>Stitch labeled passages into extractive answer
+    Note over P: Local mock execution, no external AI API call.<br/>This success path has non-empty retrieved context.
+    P-->>V: ProviderAnswer(answer, sources, supported=true,<br/>provider=mock, is_mock=true)
+    deactivate P
+
+    V->>D: _save_request(): INSERT AIRequest<br/>user, document, document_name, question, answer,<br/>status=success, provider_mode=mock, sources,<br/>error_detail="", created_at auto-set
+    activate D
+    D-->>V: Saved AIRequest with id
+    deactivate D
+    V->>Q: get_usage_summary(request.user)
+    activate Q
+    Q->>D: SELECT today's UsageRecord (read only)
+    activate D
+    D-->>Q: Current count
+    deactivate D
+    Q-->>V: used, limit, remaining, percent, at_limit
+    deactivate Q
+    V-->>B: HTTP 200 application/json<br/>id, status, answer, supported, is_mock,<br/>provider, sources, usage
+    deactivate V
+    B->>B: showAnswer(): answer text + success badge<br/>Source labels, snippets, scores + selected filename<br/>Update remaining/limit, show mock notice, clear loading
+    B-->>U: Display answer, sources and remaining allowance
+    deactivate B
+

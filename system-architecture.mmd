@@ -1,0 +1,83 @@
+%% DocuMind AI: source-verified architecture, 28 October 2026.
+%% Solid flow arrows = execution/data flow; dashed = optional configuration.
+%% Subgraphs are logical modules, not separately deployed services.
+flowchart LR
+  subgraph CLIENT["CLIENT / PRESENTATION"]
+    U["User"] --> B["Web browser<br/>Bootstrap 5.3.3 + Icons 1.11.3<br/>Vanilla JavaScript / Fetch"]
+  end
+  subgraph APP["DJANGO WEB APPLICATION - single synchronous backend"]
+    W["config.urls + app routes<br/>Sessions / authentication / CSRF<br/>Ownership checks in views"]
+    T["Django Templates<br/>Server-rendered HTML"]
+    M["accounts + workspace + documents<br/>Register/login; private workspace<br/>Upload/list/download/delete; select ready document"]
+    Q["ai_assistant.api_ask<br/>Validate question + owned ready document"]
+    L["usage.try_consume<br/>Check and increment quota BEFORE retrieval<br/>Default 10 accepted questions per user/day"]
+    H["Save AIRequest + read usage summary<br/>Answer / sources / status / usage JSON"]
+    PAGES["Dashboard / history / usage views<br/>User-scoped reads"]
+    W --> M
+    W --> Q
+    W --> PAGES
+    M -->|selected document + user question| Q
+    Q -->|valid and authorized| L
+    PAGES --> T
+    M --> T
+    H -->|JSON response| B
+    T -->|HTML response| B
+  end
+  B -->|HTTP forms / POST api/ask with session and CSRF| W
+  subgraph UPLOAD["DOCUMENT PROCESSING - upload request only"]
+    V["Validate upload<br/>PDF/TXT extension, nonempty, size <= 10 MiB"]
+    S["Save UUID file<br/>Create Document: processing"]
+    E["Extract text<br/>PDF: PyMuPDF / TXT: decoding<br/>No OCR"]
+    C["Chunk text<br/>1000 chars / 150 overlap<br/>Page or approximate line references"]
+    SAVE["Persist DocumentChunk rows<br/>Mark Document ready; update counts"]
+    M -->|upload| V --> S --> E --> C --> SAVE
+  end
+  subgraph RET["RETRIEVAL - each accepted question"]
+    R["Read selected document.chunks<br/>Ownership already checked"]
+    F["Fit TF-IDF to chunk text<br/>Transform user question<br/>English stop words; unigrams + bigrams"]
+    SIM["Cosine similarity<br/>Rank scores"]
+    CTX["Relevant chunks + source metadata<br/>Top K = 3; score >= 0.05"]
+    L -->|quota accepted| R --> F --> SIM --> CTX
+  end
+  subgraph AI["AI INTEGRATION - mutually exclusive providers"]
+    SEL["get_provider()"]
+    MOCK["MockProvider - ACTIVE / DEFAULT<br/>Extractive passages; no external API"]
+    REAL["OpenAIProvider - OPTIONAL<br/>Prepare labeled context + grounding prompt<br/>AI_PROVIDER=openai; requires AI_API_KEY"]
+    API["Configured external chat-completions service<br/>AI_BASE_URL + /chat/completions<br/>AI_MODEL; urllib HTTP client"]
+    A["ProviderAnswer<br/>Document-grounded answer + source references<br/>Or unsupported / handled provider failure"]
+    CTX --> SEL
+    SEL -->|default| MOCK --> A
+    SEL -.->|optional selection| REAL
+    REAL -.->|question + document name + retrieved context| API
+    API -.->|model response| REAL
+    REAL -.-> A
+    A --> H
+  end
+  subgraph DATA["DATA LAYER"]
+    FILES[("Private local files<br/>private_uploads/user_ID/UUID.ext")]
+    DB[("Django ORM / SQLite - ACTIVE DEFAULT<br/>db.sqlite3<br/>User + Session; Workspace; Document;<br/>DocumentChunk; AIRequest; UsageRecord")]
+    PG["PostgreSQL - OPTIONAL backend alternative<br/>DATABASE_URL parser implemented<br/>Driver absent from requirements.txt"]
+    PG -.->|replaces SQLite; not replication| DB
+  end
+  S -->|write original| FILES
+  FILES -->|read file| E
+  S -->|create metadata| DB
+  SAVE -->|transaction: chunks + ready status| DB
+  E -->|extraction failure: failed Document| DB
+  DB -->|persisted chunk text| R
+  W <-->|ORM identity / session access| DB
+  M <-->|workspace and document CRUD| DB
+  FILES -->|ownership-checked download via documents view| M
+  M -->|delete original; best effort| FILES
+  L <-->|read / increment UsageRecord| DB
+  H -->|save AIRequest; success / unsupported / handled failure| DB
+  DB -->|usage summary| H
+  DB -->|owned records| PAGES
+  L -->|quota exhausted: HTTP 429; no increment| B
+  Q -->|invalid or unauthorized: reject without charge| B
+  classDef implemented fill:#edf6fa,stroke:#245b79,color:#152c47,stroke-width:1.5px;
+  classDef optional fill:#fff6e7,stroke:#b7791f,color:#6c4814,stroke-dasharray:6 4;
+  classDef storage fill:#edf6f1,stroke:#39785b,color:#183e2d;
+  class W,T,M,Q,L,H,PAGES,V,S,E,C,SAVE,R,F,SIM,CTX,SEL,MOCK,A implemented;
+  class REAL,API,PG optional;
+  class FILES,DB storage;

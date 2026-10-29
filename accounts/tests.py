@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from workspace.models import Workspace
@@ -33,6 +33,51 @@ class AuthenticationTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "already taken")
+        self.assertContains(response, "Go to login")
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_duplicate_email_explains_existing_account(self):
+        User.objects.create_user("original", "same@example.com", "Str0ngPass!23")
+        response = self.client.post(reverse("accounts:register"), {
+            "username": "different",
+            "email": "SAME@example.com",
+            "password1": "Str0ngPass!23",
+            "password2": "Str0ngPass!23",
+        })
+        self.assertContains(response, "An account already exists with these details")
+        self.assertContains(response, "Go to login")
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_registration_with_csrf_shows_success_on_dashboard(self):
+        client = Client(enforce_csrf_checks=True)
+        page = client.get(reverse("accounts:register"))
+        self.assertEqual(page.status_code, 200)
+        response = client.post(reverse("accounts:register"), {
+            "csrfmiddlewaretoken": str(page.context["csrf_token"]),
+            "username": "newuser",
+            "email": "new@example.com",
+            "password1": "Str0ngPass!23",
+            "password2": "Str0ngPass!23",
+        }, follow=True)
+        self.assertRedirects(response, reverse("workspace:dashboard"))
+        self.assertContains(response, "Your account was created successfully.")
+        self.assertContains(response, "You are now logged in.")
+        self.assertTrue(response.context["user"].is_authenticated)
+
+    def test_registration_rejects_mismatched_csrf_without_creating_account(self):
+        client = Client(enforce_csrf_checks=True)
+        client.get(reverse("accounts:register"))
+        token = client.cookies["csrftoken"].value
+        mismatched = ("a" if token[0] != "a" else "b") + token[1:]
+        response = client.post(reverse("accounts:register"), {
+            "csrfmiddlewaretoken": mismatched,
+            "username": "rejected",
+            "email": "rejected@example.com",
+            "password1": "Str0ngPass!23",
+            "password2": "Str0ngPass!23",
+        })
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(User.objects.exists())
 
     def test_registration_rejects_weak_password(self):
         response = self.client.post(

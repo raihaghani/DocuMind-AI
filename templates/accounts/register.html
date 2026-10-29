@@ -7,6 +7,17 @@
         <div class="card auth-card">
             <div class="card-body p-4">
                 <h1 class="h4 mb-3 text-center">Create your account</h1>
+                {% if form.has_duplicate_account %}
+                <div class="alert alert-warning" role="alert">
+                    <h2 class="h6">An account already exists with these details</h2>
+                    <p>If you already submitted this form, your earlier registration
+                        may have succeeded. If this is your account, log in with
+                        your username and password.</p>
+                    <a class="btn btn-primary" href="{% url 'accounts:login' %}">
+                        Go to login
+                    </a>
+                </div>
+                {% endif %}
                 <form method="post" novalidate>
                     {% csrf_token %}
                     {% for field in form %}
